@@ -1,0 +1,124 @@
+#!/bin/sh /etc/rc.common
+
+echo_date(){
+	local log=$1
+	echo $(date +%Y/%m/%d\ %X): "$log" >> $LOGFILE
+}
+
+ver=$(uci get frp.common.ver)
+bin_path=$(uci get frp.common.bin_path)
+tmpfile=/tmp/etc/tmp_frpc
+
+routercpu(){
+	for a in $(opkg print-architecture | awk '{print $2}'); do
+		case "$a" in
+			all|noarch)
+				;;
+			aarch64_armv8-a|arm_arm1176jzf-s_vfp|arm_arm926ej-s|arm_cortex-a15_neon-vfpv4|arm_cortex-a5|arm_cortex-a53_neon-vfpv4|arm_cortex-a7_neon-vfpv4|arm_cortex-a8_vfpv3|arm_cortex-a9|arm_cortex-a9_neon|arm_cortex-a9_vfpv3|arm_fa526|arm_mpcore|arm_mpcore_vfp|arm_xscale|armeb_xscale)
+				ARCH="arm"
+				;;
+			i386_pentium|i386_pentium4)
+				ARCH="386"
+				;;
+			ar71xx|mips_24kc|mips_mips32|mips64_octeon)
+				ARCH="mips"
+				;;
+			mipsel_24kc|mipsel_24kec_dsp|mipsel_74kc|mipsel_mips32|mipsel_1004kc_dsp|ramips_1004kc|ramips_24kec)
+				ARCH="mipsle"
+				;;
+			x86_64)
+				ARCH="amd64"
+				;;
+			*)
+				echo $(date "+%F %T"): Architectures $a not support >>$LOGFILE
+				exit 0
+				;;
+		esac
+	done
+
+	echo $(date "+%F %T"): Target Arch: $ARCH >>$LOGFILE
+}
+
+downfile(){
+
+    	for a in $(uci get frp.common.url); do
+		case "$a" in
+			1)
+				download="download_binary"
+				;;
+			2)
+				download="download_binary2"
+				;;
+			3)
+				download="download_binary3"
+				;;
+			*)
+				echo $(date "+%F %T"): error.
+				exit 0
+				;;
+		esac
+	echo download $a
+	done
+}
+
+download_binary(){
+	stop
+	routercpu
+	echo_date "从github.com下载frpc二进制文件..."
+	tarfile=frp_"$ver"_linux_"$ARCH".tar.gz
+	rm -rf $bin_path
+
+	[ ! -s "/tmp/$tarfile" ] && [ ! -f "$bin_path" ] && wget --no-check-certificate --timeout=10 https://github.com/fatedier/frp/releases/download/v$ver/$tarfile -O /tmp/$tarfile && echo_date "成功下载frpc二进制文件..."
+
+	[ -f /tmp/$tarfile ] && tar zxvf /tmp/$tarfile -C /tmp && \
+	mv /tmp/frp_"$ver"_linux_$ARCH/frpc  $bin_path
+	[ -f "$bin_path" ] && ln -s $bin_path /usr/bin/frpc
+
+	if [ -L /usr/bin/frpc ]; then
+		chmod +x $bin_path && [ -x "$bin_path" ] && echo_date "frpc 下载完成"
+	#rm -rf /tmp/frp_"$ver"_linux_"$ARCH"*
+	else
+		echo_date "下载frpc二进制文件失败，请重试！"
+	fi
+}
+
+download_binary2(){
+	stop
+	routercpu
+	echo_date "从国内源下载frpc二进制文件..."
+	rm -rf $bin_path
+	
+	[ ! -s "$bin_path" ] && wget --no-check-certificate timeout=10 http://down.xxorg.com/frp/frp_"$ver"/frp_"$ver"_linux_$ARCH/frpc -O $tmpfile && echo_date "成功下载frpc二进制文件."
+
+	mv $tmpfile $bin_path
+	[ -f "$bin_path" ] && ln -s $bin_path /usr/bin/frpc
+
+	if [ -L /usr/bin/frpc ]; then
+		chmod +x $bin_path && [ -x "$bin_path" ] && echo_date "frpc 下载完成"
+	#rm -rf /tmp/frp_"$ver"_linux_"$ARCH"*
+	else
+		echo_date "下载frpc二进制文件失败，请重试！"
+	fi
+}
+
+download_binary3(){
+	stop
+	routercpu
+	echo_date "从cn2qq.com下载frpc二进制文件..."
+	rm -rf $bin_path
+	
+	wget --no-check-certificate --timeout=10 http://www.cn2qq.com/opt-file/frpc  -O $tmpfile && echo_date "成功下载frpc二进制文件mipsle"
+
+	mv $tmpfile $bin_path
+	[ -f "$bin_path" ] && ln -s $bin_path /usr/bin/frpc
+
+	if [ -L /usr/bin/frpc ]; then
+		chmod +x $bin_path && [ -x "$bin_path" ] && echo_date "frpc mipsle版下载完成"
+	else
+		echo_date "下载frpc二进制文件失败，请重试！"
+	fi
+}
+
+downfile
+$download
+
