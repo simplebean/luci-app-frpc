@@ -64,8 +64,8 @@ conf_proxy_add() {
 	echo "" >>$tmpconf
 	echo "[$remark]" >>$tmpconf
 	echo "type=$type" >>$tmpconf
-	[ -n "$custom_domains" ] && echo "custom_domains=$custom_domains.$server_addr" >>$tmpconf
-	[ -n "$subdomain" ] && echo "subdomain=$subdomain" >>$tmpconf
+	[ -n "$custom_domains" ] && echo "custom_domains=$custom_domains" >>$tmpconf
+	[ -n "$subdomain" ] && echo "subdomain=$subdomain.$server_addr" >>$tmpconf
 	[ -n "$remote_port" ] && echo "remote_port=$remote_port" >>$tmpconf
 	[ -z "$stcp_role" ] && [ -n "$local_ip" ] && echo "local_ip=$local_ip" >>$tmpconf
 	[ -z "$stcp_role" ] && [ -n "$local_port" ] && echo "local_port=$local_port" >>$tmpconf
